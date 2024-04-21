@@ -103,6 +103,28 @@ app.post('/register', async (req, res) => {
     }
 });
 
+app.post('/add-message', async (req, res) => {
+  try {
+      const { user_id, message_text } = req.body;
+
+      // Проверка наличия обязательных полей
+      if (!user_id || !message_text) {
+          return res.status(400).json({ message: 'Отсутствуют необходимые данные' });
+      }
+
+      // Добавление сообщения в базу данных
+      const query = "INSERT INTO messages (user_id, message_text) VALUES (?, ?)";
+      await db.query(query, [user_id, message_text]);
+
+      // Отправка успешного ответа
+      res.status(200).json({ message: 'Сообщение успешно добавлено' });
+  } catch (error) {
+      // Обработка ошибок
+      console.error('Ошибка (add-message):', error.message);
+      res.status(500).json({ message: 'Произошла ошибка при добавлении сообщения' });
+  }
+});
+
 app.listen(port, () => {
     console.log(`Сервер запущен на порте http://localhost:${port}`);
 });

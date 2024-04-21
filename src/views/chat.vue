@@ -11,6 +11,9 @@ export default {
     };
   },
   computed: {
+    userId() {
+      return this.$store.getters.getUserId;
+    },
     username() {
       return this.$store.getters.getUsername;
     }
@@ -18,7 +21,9 @@ export default {
   methods: {
     sendMessage() {
       if (this.newMessage.trim() !== '') {
-        this.messages.push({ author: this.username, text: this.newMessage });
+        // this.messages.push({ author: this.username, text: this.newMessage });
+        console.log(this.userId);
+        this.messages.push({ author_id: this.userId, author: this.username, text: this.newMessage });
         this.newMessage = '';
       }
     }
