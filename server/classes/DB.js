@@ -1,30 +1,21 @@
 import mysql from 'mysql2';
 import dotenv from 'dotenv';
-// import path from 'path';
-// import url from 'url';
-
-// const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
-// const envPath = path.join(__dirname, '.env');
-// dotenv.config({path: envPath});
-// console.log(dotenv.config());
-
 
 dotenv.config();
-
 
 class ConnectToDB {
     constructor() {
         this.connection = null;
+        this.checkedDB = false;
     }
 
     async connect() {
         this.connection = mysql.createConnection({
-            host: process.env.DB_HOST,
-            user: process.env.USER,
-            database: process.env.DATABASE,
-            password: process.env.PASSWORD 
+            host: process.env.DB_HOST || 'localhost',
+            user: process.env.USER || 'nodeServer',
+            password: process.env.PASSWORD || 'VLbwUP#AKh9eNZOhd6p9',
         });
-
+    
         try {
             await new Promise((resolve, reject) => {
                 this.connection.connect(function(err) {
@@ -36,26 +27,83 @@ class ConnectToDB {
                 });
             });
             console.log("Подключение к серверу MySQL успешно установлено");
+            await this.createDatabaseAndTables();
         } catch (err) {
             console.error("Ошибка (connect): " + err.message);
         }
     }
+    
+
+    async createDB() {
+        return new Promise((resolve, reject) => {
+            this.connection.query(`CREATE DATABASE IF NOT EXISTS ${process.env.DATABASE}`, (err) => {
+                if (err) {
+                    console.error("Ошибка (createDB): " + err.message);
+                    reject(err);
+                } else {
+                    console.log("База данных успешно создана");
+                    resolve();
+                }
+            });
+        });
+    }
+
+    async checkDB() {
+        try {
+            console.log("Подключение к базе данных...");
+            await this.connection.promise().query('USE ' + process.env.DATABASE);
+            console.log("База данных уже существует");
+            await this.createTables();
+        } catch (err) {
+            console.log("База данных не существует, создаем новую...");
+            try {
+                await this.createDB();
+                console.log("База данных успешно создана");
+                await this.createTables();
+            } catch (err) {
+                console.error("Ошибка при создании базы данных: " + err.message);
+            }
+        }
+    }
+    
+
+    async createTables() {
+        await this.query(`USE ${process.env.DATABASE}`);
+    
+        await this.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                login VARCHAR(512),
+                password VARCHAR(512)
+            )`);
+    
+        await this.query(`
+            CREATE TABLE IF NOT EXISTS messages (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT,
+                message VARCHAR(512),
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )`);
+    }
+    
+
+    async createDatabaseAndTables() {
+        try {
+            await this.createDB();
+            await this.createTables();
+        } catch (err) {
+            if (err.code === 'ER_DB_CREATE_EXISTS') {
+                console.log("База данных уже существует");
+                await this.checkDB();
+            } else {
+                console.error("Ошибка (createDatabaseAndTables): " + err.message);
+            }
+        }
+    }
 
     async query(query, params) {
-        if (!this.connection) {
-            console.error("Соединение с базой данных не установлено");
-            throw new Error("Соединение с базой данных не установлено");
-        }
         try {
-            const [results, fields] = await new Promise((resolve, reject) => {
-                this.connection.query(query, params, (err, results, fields) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve([results, fields]);
-                    }
-                });
-            });
+            const [results, fields] = await this.connection.promise().query(query, params);
             return [results, fields];
         } catch (err) {
             console.error("Ошибка (query): " + err.message);
@@ -64,52 +112,42 @@ class ConnectToDB {
     }
 
     async endConnection() {
-        if (this.connection) {
-            try {
-                await new Promise((resolve, reject) => {
-                    this.connection.end(function(err) {
-                        if (err) {
-                            reject(err);
-                        } else {
-                            resolve();
-                        }
-                    });
-                });
-                console.log("Подключение закрыто");
-            } catch (err) {
-                console.error("Ошибка (endConnection): " + err.message);
-            }
+        try {
+            await this.connection.promise().end();
+            console.log("Подключение закрыто");
+        } catch (err) {
+            console.error("Ошибка (endConnection): " + err.message);
         }
     }
 }
 
 class SaveToDB {
-    constructor() {
-        this.db = new ConnectToDB();
+    constructor(connection) {
+        this.db = connection;
     }
 
     async save(login, password) {
         try {
-            await this.db.connect();
             if (!login || !password) {
                 console.error("Login or password not provided for insertion.");
                 return;
             }
-            // Construct the users object
+            await this.db.connect();
             const users = { login: login, password: password };
             const query = "INSERT INTO users SET ?";
             const [results, fields] = await this.db.query(query, users);
             console.log("Запись успешно добавлена");
-            await this.db.endConnection();
         } catch (err) {
             console.error("Ошибка (save): " + err.message);
+        } finally {
+            await this.db.endConnection();
         }
     }
 }
 
 class getDataFromDB {
-    constructor() {
-        this.db = new ConnectToDB();
+    constructor(connection) {
+        this.db = connection;
     }
 
     async getData() {
@@ -117,32 +155,28 @@ class getDataFromDB {
             await this.db.connect();
             const query = "SELECT * FROM users";
             const [rows, fields] = await this.db.query(query);
-            // console.log(rows);
-            await this.db.endConnection();
             return rows;
         } catch (err) {
             console.error("Ошибка (getData): " + err.message);
             throw err;
+        } finally {
+            await this.db.endConnection();
         }
     }
+
     async getUserByLogin(login) {
         try {
             await this.db.connect();
             const query = "SELECT * FROM users WHERE login = ?";
             const [rows, fields] = await this.db.query(query, [login]);
-            await this.db.endConnection();
             return rows[0];
         } catch (err) {
             console.error("Ошибка (getUserByLogin): " + err.message);
             throw err;
+        } finally {
+            await this.db.endConnection();
         }
     }
 }
 
-const save = new SaveToDB();
-save.save();
-
-const getData = new getDataFromDB();
-getData.getData();
-
-export { SaveToDB, getDataFromDB };
+export { ConnectToDB, SaveToDB, getDataFromDB };
