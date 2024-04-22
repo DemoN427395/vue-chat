@@ -75,7 +75,7 @@ class ConnectToDB {
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 login VARCHAR(512),
                 password VARCHAR(512)
-            )`);
+            )`);   // login VARCHAR(512) UNIQUE,
     
         await this.query(`
             CREATE TABLE IF NOT EXISTS messages (
