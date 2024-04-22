@@ -115,6 +115,7 @@ export default {
   font-size: 16px;
   border: 1px solid #fff;
   border-radius: 5px;
+  background-color: #2c2c2c;
 }
 
 .auth-input:focus {
