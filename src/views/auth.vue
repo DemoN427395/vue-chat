@@ -2,9 +2,9 @@
 import Buttons from '../components/Buttons.vue';
 
 export default {
-    components: {
-      Buttons
-    },
+  components: {
+    Buttons
+  },
   data() {
     return {
       login: '',
@@ -13,56 +13,54 @@ export default {
     };
   },
   methods: {
-    signIn() {
-      if (this.login.trim() !== '' && this.password.trim() !== '') {
-          // Define the user object with the login and password
-          let user = {
-              login: this.login,
-              password: this.password
-          };
+async signIn() {
+ try {
+    if (!this.login.trim() || !this.password.trim()) {
+      alert('Пожалуйста, введите логин и пароль');
+      return;
+    }
 
-          fetch('http://localhost:3000/auth', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(user) // Use the user object here
-          })
-          .then(response => {
-              if (!response.ok) {
-                  return response.json().then(err => {
-                      throw err;
-                  });
-              }
-              return response.json();
-          })
-          .then(data => {
-            console.log(data);
-            if (data.message) {
-                // alert(data.message);
-                this.$store.dispatch('setUsername', this.login);
-                this.$router.push({ name: 'chat' });
-            } 
-            // else {
-            //     this.$store.dispatch('setUsername', this.login);
-            //     console.log('Redirecting to chat');
-            //     this.$router.push({ name: 'chat' });
-            //     console.log('Redirection command sent');
-            // }
-          })
-          .catch(error => {
-              console.error('There has been a problem with your fetch operation:', error);
-              alert(error.message);
-          });
-      } else if (this.login.trim() === '') {
-          alert('Пожалуйста, введите логин');
-      } else {
-          alert('Пожалуйста, введите ваш пароль');
+    const user = {
+      login: this.login,
+      password: this.password
+    };
+
+    const response = await fetch('http://localhost:3000/auth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(user)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message);
+    }
+
+    const data = await response.json();
+    const userId = data.userId;
+    const username = data.username;
+    const token = data.token;
+
+    this.$store.dispatch('setUserId', userId);
+    this.$store.dispatch('setUsername', username);
+    localStorage.setItem('token', token);
+
+    this.isLoggedIn = true;
+    console.log(`username (login): ${username} id: (userId): ${userId}`);
+    console.log('Sign in successful, redirecting to chat...');
+    this.$router.push({ name: 'chat' });
+} 
+catch (error) {
+        console.error('Ошибка аутентификации:', error.message);
+        alert(error.message);
       }
     }
   }
 };
 </script>
+
 
 <template>
   <div class="chat-app">
@@ -77,11 +75,6 @@ export default {
           <buttons buttonClass="buttons">Регистрация</buttons>
         </router-link>
       </div>
-    </div>
-    <div v-else>
-      <h2 class="welcome-message">Привет, {{ login }}!</h2>
-      <h2 class="welcome-message">Пароль, {{ password }}</h2>
-      <!-- Здесь будет ваша основная часть чата -->
     </div>
   </div>
 </template>
@@ -116,6 +109,8 @@ export default {
   border: 1px solid #fff;
   border-radius: 5px;
   background-color: #2c2c2c;
+  color: #fff;
+  text-align: center;
 }
 
 .auth-input:focus {

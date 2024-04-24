@@ -1,5 +1,7 @@
 import mysql from 'mysql2';
 import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
+
 
 dotenv.config();
 
@@ -41,7 +43,7 @@ class ConnectToDB {
                     console.error("Ошибка (createDB): " + err.message);
                     reject(err);
                 } else {
-                    console.log("База данных успешно создана");
+                    // console.log("База данных успешно создана");
                     resolve();
                 }
             });
@@ -73,8 +75,9 @@ class ConnectToDB {
         await this.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                login VARCHAR(512),
-                password VARCHAR(512)
+                login VARCHAR(512) UNIQUE,
+                password VARCHAR(512),
+                jwt_secret VARCHAR(512)
             )`);
     
         await this.query(`
@@ -126,14 +129,15 @@ class SaveToDB {
         this.db = connection;
     }
 
-    async save(login, password) {
+    async save(login, password, jwtSecret) {
         try {
-            if (!login || !password) {
-                console.error("Login or password not provided for insertion.");
+            if (!login || !password || !jwtSecret) {
+                console.error("Login, password, or JWT secret not provided for insertion.");
                 return;
             }
             await this.db.connect();
-            const users = { login: login, password: password };
+            const hashedPassword = bcrypt.hashSync(password, 10); // Hash the password
+            const users = { login: login, password: hashedPassword, jwt_secret: jwtSecret };
             const query = "INSERT INTO users SET ?";
             const [results, fields] = await this.db.query(query, users);
             console.log("Запись успешно добавлена");

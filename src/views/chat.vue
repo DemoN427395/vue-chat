@@ -1,35 +1,65 @@
 <script>
+import { socket } from '@/socket';
+import store from '@/store/store';
+
 export default {
   data() {
     return {
-      messages: [
-        { author: 'User1', text: 'Привет, как дела?' },
-        { author: 'User2', text: 'Всё в порядке, спасибо. А у тебя?' },
-        // Добавьте здесь больше сообщений для демонстрации
-      ],
+      messages: [],
       newMessage: ''
     };
   },
   computed: {
     userId() {
-      return this.$store.getters.getUserId;
+      return store.getters.getUserId;
     },
     username() {
-      return this.$store.getters.getUsername;
+      return store.getters.getUsername;
     }
   },
   methods: {
     sendMessage() {
       if (this.newMessage.trim() !== '') {
-        // this.messages.push({ author: this.username, text: this.newMessage });
-        console.log(this.userId);
-        this.messages.push({ author_id: this.userId, author: this.username, text: this.newMessage });
+        const message = {
+          author: this.username,
+          text: this.newMessage
+        };
+        socket.emit('message', message);
         this.newMessage = '';
       }
     }
+  },
+  beforeRouteEnter(to, from, next) {
+    const userId = store.getters.getUserId;
+    if (!userId) {
+      next({ name: 'auth' });
+    } else {
+      next();
+    }
+  },
+  mounted() {
+    socket.on('connect', () => {
+      console.log('Соединение установлено');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Соединение разорвано');
+    });
+
+    socket.on('error', (error) => {
+      console.error('Произошла ошибка при подключении:', error);
+    });
+
+    socket.on('message', (message) => {
+      console.log('Получено новое сообщение на клиенте: ', message);
+      this.messages.push(message);
+    });
   }
 };
 </script>
+
+
+
 
 <template>
   <div class="chat-container">
@@ -37,6 +67,7 @@ export default {
       <div v-for="(message, index) in messages" :key="index" class="message">
         <span class="message-author">{{ message.author }}</span>: {{ message.text }}
       </div>
+
     </div>
     <form @submit.prevent="sendMessage" class="message-form">
       <input v-model="newMessage" type="text" placeholder="Введите ваше сообщение..." class="message-input">
