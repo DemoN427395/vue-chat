@@ -8,8 +8,9 @@ export const state = reactive({
 });
 
 const URL = process.env.NODE_ENV === "production" ? undefined : "http://localhost:4000";
+const URL_DEPLOY = "http://localhost:4000";
 
-export const socket = io(URL);
+export const socket = io(URL || URL_DEPLOY);
 
 socket.on("connect", () => {
   state.connected = true;

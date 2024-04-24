@@ -1,5 +1,7 @@
 import express from 'express';
 import bodyParser from 'body-parser';
+import path from 'path';
+import url from 'url';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -8,6 +10,8 @@ import './message_server.js';
 
 const app = express();
 const port = process.env.PORT;
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+
 
 const db = new ConnectToDB();
 
@@ -19,7 +23,7 @@ db.connect()
     app.use(express.json());
     app.use(bodyParser.json());
     app.use(cors());
-
+    app.use(express.static(path.join(__dirname, '..', 'dist')));
 
     app.post('/auth', async (req, res) => {
       try {
