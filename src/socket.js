@@ -20,7 +20,6 @@ socket.on("connect", () => {
 socket.on("disconnect", () => {
   state.connected = false;
   console.log('Socket disconnected');
-
 });
 
 socket.on("foo", (...args) => {

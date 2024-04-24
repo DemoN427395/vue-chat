@@ -43,7 +43,6 @@ class ConnectToDB {
                     console.error("Ошибка (createDB): " + err.message);
                     reject(err);
                 } else {
-                    // console.log("База данных успешно создана");
                     resolve();
                 }
             });
@@ -89,6 +88,10 @@ class ConnectToDB {
             )`);
     }
     
+    async createChatTable(login) {
+        await this.query(`USE ${process.env.DATABASE}`);
+
+    }
 
     async createDatabaseAndTables() {
         try {
