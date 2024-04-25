@@ -25,7 +25,7 @@ async signIn() {
       password: this.password
     };
 
-    const response = await fetch('http://localhost:3000/auth', {
+    const response = await fetch('http://localhost:3000/auth' || 'http://192.168.27.111:3000/auth' || 'http://26.193.86.185:3000/auth', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -52,7 +52,7 @@ async signIn() {
     console.log('Sign in successful, redirecting to chat...');
     this.$router.push({ name: 'chat' });
 } 
-catch (error) {
+  catch (error) {
         console.error('Ошибка аутентификации:', error.message);
         alert(error.message);
       }

@@ -12,11 +12,13 @@ export default {
       messages: [],
       newMessage: '',
       chats: [
-      { name: "Чат 1", chatMessages: [{ author: "User1", text: "Привет!" }] },
-      { name: "Чат 2", chatMessages: [{ author: "User2", text: "Как дела?" }] },
-      { name: "Чат 3", chatMessages: [{ author: "User3", text: "Что делаешь?" }] }
+        { name: "Чат 1", chatMessages: [{ author: "User1", text: "Привет!" }] },
+        { name: "Чат 2", chatMessages: [{ author: "User2", text: "Как дела?" }] },
+        { name: "Чат 3", chatMessages: [{ author: "User3", text: "Что делаешь?" }] }
       ],
-      selectedChatIndex: 0
+      selectedChatIndex: 0,
+      isChatActive: false,
+      showMessageInput: false
     };
   },
   computed: {
@@ -25,13 +27,19 @@ export default {
     },
     username() {
       return store.getters.getUsername;
-    },    
-    messages() {
-      return this.chats[this.selectedChatIndex].messages;
+    },
+    lastMessages() {
+      return this.chats.map(chat => {
+        if (chat.chatMessages.length > 0) {
+          const lastMessage = chat.chatMessages[chat.chatMessages.length - 1];
+          return { ...chat, lastMessage };
+        } else {
+          return { ...chat, lastMessage: { text: "No messages" } };
+        }
+      });
     }
   },
   methods: {
-
     sendMessage() {
       if (this.newMessage.trim() !== '') {
         const message = {
@@ -42,34 +50,27 @@ export default {
         this.newMessage = '';
       }
     },
-      selectChat(chat) {
+    selectChat(chat) {
       this.selectedChatIndex = this.chats.indexOf(chat);
     },
-  },
-  beforeRouteEnter(to, from, next) {
-    const userId = store.getters.getUserId;
-    if (!userId) {
-      next({ name: 'auth' });
-    } else {
-      next();
+    checkAuthentication() {
+      const userId = store.getters.getUserId;
+      if (!userId) {
+        this.$router.push({ name: 'auth' });
+      }
     }
   },
   mounted() {
-    socket.on('connect', () => {
-      console.log('Соединение установлено');
-    });
-
-    socket.on('disconnect', () => {
-      console.log('Соединение разорвано');
-    });
-
-    socket.on('error', (error) => {
-      console.error('Произошла ошибка при подключении:', error);
-    });
+    this.checkAuthentication();
 
     socket.on('message', (message) => {
       console.log('Получено новое сообщение на клиенте: ', message);
-      this.chats[this.selectedChatIndex].messages.push(message);
+      this.chats[this.selectedChatIndex].chatMessages.push(message);
+      this.messages.push(message);
+      this.$nextTick(() => {
+        const messageContainer = this.$refs.messageContainer;
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+      });
     });
   }
 };
@@ -78,13 +79,17 @@ export default {
 <template>
   <div class="parent">
     <div class="div1">
-      <Chats :chats="chats" @selectChat="selectChat" />
+      <input type="text" class="search-input" placeholder="Поиск пользователя"/>
+      <Chats :chats="lastMessages" @selectChat="selectChat" />
     </div>
     <div class="div2">
       <div class="chat-container">
-        <div class="messages">
-          <div v-for="(message, index) in messages" :key="index" class="message">
-            <span class="message-author">{{ message.author }}</span>: {{ message.text }}
+        <div class="messages" ref="messageContainer">
+          <div v-for="(message, index) in messages" :key="index" class="message" :class="{ 'own-message': message.author === username }">
+            <template v-if="message.author !== username">
+              <span class="message-author">{{ message.author }}</span>:
+            </template>
+            {{ message.text }}
           </div>
         </div>
         <form @submit.prevent="sendMessage" class="message-form">
@@ -98,11 +103,11 @@ export default {
 
 <style scoped>
 .parent {
-display: grid;
-grid-template-columns: repeat(2, 1fr);
-grid-template-rows: 1fr;
-grid-column-gap: 0px;
-grid-row-gap: 0px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: 1fr;
+  grid-column-gap: 0px; 
+  grid-row-gap: 0px;
 }
 
 .div1 { grid-area: 1 / 1 / 3 / 2; }
@@ -113,18 +118,36 @@ grid-row-gap: 0px;
   flex-direction: column;
   height: 100vh;
   width: 90vw;
-  padding: 20px;
+  padding: 1em 4rem 1em 4em;
   box-sizing: border-box;
+  background-color: #303030;
 }
 
 .messages {
   flex-grow: 1;
   overflow-y: auto;
-  padding-right: 10px;
+  padding-right: 1em;
+}
+
+.messages::-webkit-scrollbar {
+  width: 1em;
+}
+
+.messages::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 10px; 
+}
+
+.messages::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.5); 
 }
 
 .message {
   margin-bottom: 10px;
+}
+
+.own-message {
+  text-align: right;
 }
 
 .message-author {
@@ -134,6 +157,7 @@ grid-row-gap: 0px;
 .message-form {
   display: flex;
   align-items: center;
+  margin-top:1em;
 }
 
 .message-input {
@@ -160,5 +184,14 @@ grid-row-gap: 0px;
   border: none;
   border-radius: 5px;
   cursor: pointer;
+}
+
+.search-input {
+  background-color: #2c2c2c;
+  border: none;
+  color: #fff;
+  text-align: center;
+  width: 100%;
+  height: 5%;
 }
 </style>

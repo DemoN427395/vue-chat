@@ -88,9 +88,14 @@ class ConnectToDB {
             )`);
     }
     
-    async createChatTable(login) {
+    async createUserChatTable(login) {
         await this.query(`USE ${process.env.DATABASE}`);
 
+        await this.query(`
+            CREATE TABLE IF NOT EXISTS ${login} (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                message VARCHAR(512)
+            )`);
     }
 
     async createDatabaseAndTables() {

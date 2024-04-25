@@ -1,8 +1,9 @@
-import express from 'express';
-import bodyParser from 'body-parser';
+import os from 'os';
 import path from 'path';
 import url from 'url';
 import cors from 'cors';
+import express from 'express';
+import bodyParser from 'body-parser';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { ConnectToDB, SaveToDB, getDataFromDB } from './classes/DB.js';
@@ -11,6 +12,18 @@ import './message_server.js';
 const app = express();
 const port = process.env.PORT;
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+
+
+const networkInterfaces = os.networkInterfaces();
+let ipv4Addresses = [];
+
+Object.values(networkInterfaces).forEach(interfaces => {
+  interfaces.forEach(interfaceData => {
+      if (interfaceData.family === 'IPv4') {
+          ipv4Addresses.push(interfaceData.address);
+      }
+  });
+});
 
 
 const db = new ConnectToDB();
@@ -76,7 +89,8 @@ db.connect()
   
 
     app.listen(port, () => {
-      console.log(`Сервер запущен на порте http://localhost:${port}`);
+      console.log(ipv4Addresses.map(adress => `Адрес: http://${adress}:${port}`).join('\n'));
+      console.log("dev: http://127.0.0.1:5173/")
     });
   })
   .catch((error) => {
