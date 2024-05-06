@@ -2,62 +2,59 @@
 import Buttons from '../components/Buttons.vue';
 
 export default {
-    components: {
-      Buttons
-    },
- data() {
+  components: {
+    Buttons
+  },
+  data() {
     return {
       login: '',
       password: '',
       repeatPassword: '',
       isLoggedIn: false
     };
- },
- methods: {
-    signUp() {
+  },
+  methods: {
+    async signUp() {
       if (this.login.trim() !== '' && this.password.trim() === this.repeatPassword.trim()) {
-        let user = {
+        const user = {
           login: this.login,
           password: this.password
         };
-        console.log(user);
 
-      fetch('http://localhost:3000/register', {
-       method: 'POST',
-       headers: {
-          'Content-Type': 'application/json'
-       },
-       body: JSON.stringify(user)
-      })
-      .then(response => {
-       if (!response.ok) {
-          return response.json().then(err => {
-            throw err;
+        try {
+          const response = await fetch('http://localhost:3000/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(user)
           });
-       }
-       return response.json();
-      })
-      .then(data => {
-        console.log(data);
-        this.$store.dispatch('setUsername', this.login);
-        this.$router.push({ name: 'chat' });
-      })
-      .catch(error => {
-        console.error('There has been a problem with your fetch operation:', error);
-        alert(error.message);
-      });
 
+          if (!response.ok) {
+            throw new Error('Registration failed');
+          }
+
+          const data = await response.json();
+          console.log(data);
+
+          // Save JWT token to local storage or Vuex store
+          localStorage.setItem('token', data.token);
+
+          this.$store.dispatch('setUsername', this.login);
+          this.$router.push({ name: 'chat' });
+        } catch (error) {
+          console.error('There has been a problem with your fetch operation:', error);
+          alert('Registration failed');
+        }
       } else if (this.login.trim() === '') {
-        console.log(alert('Пожалуйста, введите логин'));
-      }
-      else if (this.password.trim() !== this.repeatPassword.trim()) {
-        console.log(alert('Пароли не совпадают'), 'Пароли не совпадают');
-      }
-      else if (this.password.trim() === '' || this.repeatPassword.trim() === '') {
+        alert('Пожалуйста, введите логин');
+      } else if (this.password.trim() !== this.repeatPassword.trim()) {
+        alert('Пароли не совпадают');
+      } else if (this.password.trim() === '' || this.repeatPassword.trim() === '') {
         alert('Пожалуйста, введите ваш пароль');
       }
     }
- }
+  }
 };
 </script>
 
@@ -103,12 +100,14 @@ export default {
 }
 
 .auth-input {
-  margin-bottom: 10px;
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #fff;
-  border-radius: 5px;
-  background-color: #2c2c2c;
+ margin-bottom: 10px;
+ padding: 10px;
+ font-size: 16px;
+ border: 1px solid #fff;
+ border-radius: 5px;
+ background-color: #2c2c2c;
+ color: #fff;
+ text-align: center; /* Add a semicolon here */
 }
 
 .auth-input:focus {
